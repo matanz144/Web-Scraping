@@ -1,14 +1,9 @@
 import requests
-import pandas as pd
 import time
-import sys
 
 from pprint import pprint
 from bs4 import BeautifulSoup
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-
-DRIVER_PATH = 'c/Users/pmmatan/PycharmProjects/WebScrappingLearning/chromedriver.exe'
 
 
 class DayForecast(object):
@@ -18,7 +13,6 @@ class DayForecast(object):
         self.temperature = temp
 
     def __repr__(self):
-        # return repr(dict(Day=self.day, Dsecription=self.description, Temperature=self.temperature))
         return 'Day: {}, Dsecription: {}, Temperature: {}'.format(self.day, self.description, self.temperature)
 
 
@@ -42,49 +36,34 @@ class WeekForecast(DayForecast):
             if day == item.day:
                 print(self.day[i])
                 print(self.day[i + 1])
-        # print(self.title, day)
 
 
+def createForecast(request):
+    page = requests.get(request)  # Getting the page from specific URL
+    content = BeautifulSoup(page.content, 'html.parser')  # Get the html content
+    forecast = content.find(id='seven-day-forecast')
+    # Get title
+    title = forecast.find(class_='panel-title').get_text()
+    # Get days name
+    name = forecast.find_all("p", "period-name")
+    day_name = [item.get_text() for item in name]
+    # Get temperature for each day
+    temp = forecast.find_all("p", ["temp temp-high", "temp temp-low"])
+    day_temp = [item.get_text() for item in temp]
+    # Get description for each day
+    desc = forecast.find_all("p", "short-desc")
+    day_desc = [item.get_text() for item in desc]
 
-
-def createForecast(request, title):
-    page = requests.get(request)
-    soup = BeautifulSoup(page.content, 'html.parser')
-    week = soup.find(id='seven-day-forecast-body')
-    items = week.find_all(class_='tombstone-container')
-    # title = soup.find_all(class_='panel-title')
-    # title2 = soup.find(class_='panel-title').get_text()
-    days = [item.find(class_='period-name').get_text() for item in items]  # Get a list of all days
-    description = [item.find(class_='short-desc').get_text() for item in items]  # Get description for each day
-    temperature = getTemp(items=items)  # Get a list of temperature for each day
     forcast_days = []
-    for i, item in enumerate(items):
-        day = DayForecast(day=days[i], desc=description[i], temp=temperature[i])
-        forcast_days.append(day)
-        # forcast.forcast_list.append(day)
+    for i in range(len(day_name)):
+        forcast_days.append(DayForecast(day=day_name[i], desc=day_desc[i], temp=day_temp[i]))
 
-    # pprint(forcast_days)
     return WeekForecast(forcast_list=forcast_days, title=title)
 
 
-def getTemp(items):
-    temp_list = []
-    for item in items:
-        if items.index(item) % 2 == 0:
-            temp_list.append(item.find(class_='temp temp-high').get_text())
-        else:
-            temp_list.append(item.find(class_='temp temp-low').get_text())
-    return temp_list
-
-
 if __name__ == "__main__":
-    # address = ''.join(sys.argv[1:])
-    address = 'Manhatten'
 
-    site = 'https://forecast.weather.gov/MapClick.php?lat=40.71455000000003&lon=-74.00713999999994#.XW5KLSgzaUk'
-    # week = createForecast(site, address)
-    # week.printForecast()
-
+    address = 'Los Angeles'
 
     # Create and open a new session in Firefox
     browser = webdriver.Firefox()
@@ -97,11 +76,11 @@ if __name__ == "__main__":
     search_box.send_keys(address)
     time.sleep(2)
     go_btn.click()
-    browser.implicitly_wait(15)
 
     # Reading data from the browser and print
     url = browser.current_url
-    week = createForecast(site, address)
+    browser.close()
+    week = createForecast(url)
     week.printDay('Today')
-    # week.printForecast()
+    week.printForecast()
 
